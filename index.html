@@ -143,15 +143,21 @@
   .champion.empty{border-style:dashed;border-color:var(--line);background:transparent}
   .champion.empty .lbl{color:var(--muted)}
 
-  #mtip{position:fixed;z-index:60;display:none;max-width:250px;pointer-events:none;
-        background:rgba(6,12,28,.97);border:1px solid var(--accent2);border-radius:9px;
-        padding:8px 11px;font-size:11.5px;line-height:1.55;color:var(--txt);
-        box-shadow:0 6px 22px rgba(0,0,0,.55)}
-  #mtip b{color:var(--accent2);font-size:12.5px;display:block;margin-bottom:3px}
-  #mtip .fav{color:var(--gold);font-weight:700;margin-top:3px}
+  #mtip{display:none;max-width:680px;margin:4px auto 0;text-align:center;
+        background:rgba(6,12,28,.97);border:1px solid var(--accent2);border-radius:10px;
+        padding:9px 16px;font-size:12.5px;line-height:1.5;color:var(--txt);
+        box-shadow:0 4px 18px rgba(0,0,0,.45)}
+  #mtip.show{display:block}
+  #mtip b{color:var(--accent2);font-size:13.5px;display:block;margin-bottom:4px}
+  #mtip .meta{color:var(--muted)}
+  #mtip .fav{color:var(--gold);font-weight:700;margin-top:4px}
+  #mtip .hint{color:var(--muted);font-style:italic}
   .match{cursor:default}
 
   footer{text-align:center;color:var(--muted);font-size:12px;padding:6px 16px 30px}
+  footer .sign{display:inline-flex;align-items:center;gap:5px;margin-top:5px;
+               font-size:10.5px;letter-spacing:.4px;color:var(--line);opacity:.85}
+  footer .sign svg{color:var(--accent2);opacity:.7}
 </style>
 </head>
 <body>
@@ -191,7 +197,16 @@
     <div class="bracket" id="bracket"><div id="lines"></div></div>
   </div>
 
-  <footer>16avos de final confirmados tras la fase de grupos (28-jun-2026) · Probabilidades estimadas con modelo Elo.</footer>
+  <footer>16avos de final confirmados tras la fase de grupos (28-jun-2026) · Probabilidades estimadas con modelo Elo.<br>
+    <span class="sign">
+      <svg viewBox="0 0 24 28" width="11" height="13" aria-hidden="true">
+        <ellipse cx="12" cy="5" rx="10" ry="3.6" fill="none" stroke="currentColor" stroke-width="2"/>
+        <path d="M2 5v8c0 2 4.5 3.6 10 3.6s10-1.6 10-3.6V5" fill="none" stroke="currentColor" stroke-width="2"/>
+        <path d="M2 13v8c0 2 4.5 3.6 10 3.6s10-1.6 10-3.6v-8" fill="none" stroke="currentColor" stroke-width="2"/>
+      </svg>
+      Jose Miguel Causado · DBA
+    </span>
+  </footer>
 
 <script>
 /* ===================== DATOS ===================== */
@@ -452,25 +467,25 @@ function matchEl(r,i,withNum){
   const md=document.createElement("div");md.className="match";md.dataset.r=r;md.dataset.i=i;
   if(withNum){const s=document.createElement("span");s.className="num";s.textContent=i+1;md.appendChild(s);}
   md.appendChild(teamRow(r,i,0));md.appendChild(teamRow(r,i,1));
-  md.addEventListener("mouseenter",e=>showTip(r,i,e));
-  md.addEventListener("mousemove",moveTip);
-  md.addEventListener("mouseleave",hideTip);
+  md.addEventListener("mouseenter",()=>showTip(r,i));
   return md;
 }
-/* ---- tooltip de partido (fecha-hora de transmisión + favorito) ---- */
-const mtip=document.createElement("div");mtip.id="mtip";document.body.appendChild(mtip);
+/* ---- panel de info del partido: aparece DEBAJO del cuadro (no lo tapa) ---- */
+const TIP_HINT=`<span class="hint">Pasa el mouse por un partido para ver fecha, hora de transmisión y favorito.</span>`;
+const mtip=document.createElement("div");mtip.id="mtip";mtip.className="show";mtip.innerHTML=TIP_HINT;
+(function(){const sc=document.querySelector(".scroller");sc.parentNode.insertBefore(mtip,sc.nextSibling);})();
 function tipHTML(r,i){
   const M=rounds[r][i];if(!M)return"";
   const a=M.teams[0],b=M.teams[1];if(!a||!b)return"";
   const nm=t=>t.placeholder?t.name:`${t.flag} ${t.name}`;
-  let h=`<b>${nm(a)}  vs  ${nm(b)}</b>`;
+  let h=`<b>${nm(a)} &nbsp;vs&nbsp; ${nm(b)}</b>`;
   if(r===0){
     const inf=MATCHINFO[i]||{};
     const fecha=inf.d&&inf.d!=="—"?inf.d:"Fecha por confirmar";
     const hora=inf.h&&inf.h!=="—"?` · ${inf.h} (hora Col.)`:" · hora por confirmar";
-    h+=`<div>🗓 ${fecha}${hora}</div><div>📍 ${inf.s||"Por confirmar"}</div><div>📺 ${inf.tv||"DGO"}</div>`;
+    h+=`<div class="meta">🗓 ${fecha}${hora} &nbsp;·&nbsp; 📍 ${inf.s||"Por confirmar"} &nbsp;·&nbsp; 📺 ${inf.tv||"DGO"}</div>`;
   }else{
-    h+=`<div>🗓 Se define al avanzar el cuadro</div>`;
+    h+=`<div class="meta">🗓 Se define al avanzar el cuadro</div>`;
   }
   if(!a.placeholder&&!b.placeholder){
     const f=rating(a.name)>=rating(b.name)?a:b,o=f===a?b:a;
@@ -478,15 +493,7 @@ function tipHTML(r,i){
   }
   return h;
 }
-function moveTip(e){
-  const pad=14,w=mtip.offsetWidth,h=mtip.offsetHeight;
-  let x=e.clientX+pad,y=e.clientY+pad;
-  if(x+w>window.innerWidth)x=e.clientX-w-pad;
-  if(y+h>window.innerHeight)y=e.clientY-h-pad;
-  mtip.style.left=Math.max(4,x)+"px";mtip.style.top=Math.max(4,y)+"px";
-}
-function showTip(r,i,e){const html=tipHTML(r,i);if(!html){hideTip();return;}mtip.innerHTML=html;mtip.style.display="block";moveTip(e);}
-function hideTip(){mtip.style.display="none";}
+function showTip(r,i){const html=tipHTML(r,i);if(html)mtip.innerHTML=html;}   // mantiene el último al salir
 function column(round,start,count,side){
   const col=document.createElement("div");col.className="round"+(side==="R"?" side-r":"");
   const t=document.createElement("div");t.className="round-title";t.textContent=ROUND_NAMES[round];col.appendChild(t);
