@@ -95,9 +95,10 @@
   .bracket{position:relative;display:flex;gap:26px;min-width:1500px;align-items:stretch}
   #lines{position:absolute;inset:0;pointer-events:none;z-index:0}
   .conn{position:absolute;background:var(--line)}
-  .round{display:flex;flex-direction:column;justify-content:space-around;flex:1 1 0;
+  .round{display:flex;flex-direction:column;flex:1 1 0;
          min-width:150px;position:relative;z-index:1}
-  .round.final-col{justify-content:center;flex:0 0 190px;min-width:190px}
+  .round-body{flex:1 1 auto;display:flex;flex-direction:column;justify-content:space-around}
+  .round.final-col{flex:0 0 200px;min-width:200px}
   .round-title{text-align:center;font-size:11px;font-weight:700;letter-spacing:1px;
                text-transform:uppercase;color:var(--muted);margin-bottom:8px}
 
@@ -131,7 +132,8 @@
   .side-r .team{flex-direction:row-reverse;text-align:right}
   .side-r .team .name{text-align:right}
 
-  .champion-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:18px}
+  .champion-wrap{position:absolute;left:0;right:0;top:50%;margin-top:50px;
+                 display:flex;flex-direction:column;align-items:center;gap:8px}
   .trophy{font-size:38px;filter:drop-shadow(0 0 12px var(--gold))}
   .champion{text-align:center;border:2px solid var(--gold);border-radius:14px;padding:12px 16px;min-width:150px;
             background:linear-gradient(180deg,rgba(255,207,63,.18),rgba(255,207,63,.04))}
@@ -141,6 +143,14 @@
   .champion.empty{border-style:dashed;border-color:var(--line);background:transparent}
   .champion.empty .lbl{color:var(--muted)}
 
+  #mtip{position:fixed;z-index:60;display:none;max-width:250px;pointer-events:none;
+        background:rgba(6,12,28,.97);border:1px solid var(--accent2);border-radius:9px;
+        padding:8px 11px;font-size:11.5px;line-height:1.55;color:var(--txt);
+        box-shadow:0 6px 22px rgba(0,0,0,.55)}
+  #mtip b{color:var(--accent2);font-size:12.5px;display:block;margin-bottom:3px}
+  #mtip .fav{color:var(--gold);font-weight:700;margin-top:3px}
+  .match{cursor:default}
+
   footer{text-align:center;color:var(--muted);font-size:12px;padding:6px 16px 30px}
 </style>
 </head>
@@ -148,7 +158,7 @@
   <header>
     <div class="kicker">Copa del Mundo · USA · México · Canadá</div>
     <h1>Simulador Mundial 2026</h1>
-    <p>Sábado 27 de junio · primero define los grupos de hoy, luego el cuadro</p>
+    <p>Domingo 28 de junio · 16avos de final ya definidos · arma tu cuadro hasta la Final</p>
     <div class="toolbar">
       <button class="btn primary" id="probBtn">⚡ Simular por probabilidad</button>
       <button class="btn" id="randomBtn">🎲 Azar</button>
@@ -157,6 +167,12 @@
     <div class="section-sub" style="margin:8px 0 0">Los <b>%</b> son la probabilidad de cada selección según su fuerza (modelo Elo por ranking y forma).</div>
   </header>
 
+  <!-- ============================================================
+       FASE DE GRUPOS — RECICLABLE (desactivada el domingo 28: la fase de
+       grupos ya terminó). Para reutilizar en un próximo Mundial: descomenta
+       este bloque, descomenta los bloques JS marcados "RECICLABLE" más abajo,
+       y vuelve a llamar renderGroups()/renderScorers() en render()/init.
+  ============================================================
   <div class="simstats" id="simstats"></div>
 
   <div class="section-title">① Fase de grupos — HOY (sábado 27)</div>
@@ -167,21 +183,24 @@
   <div class="section-title" style="color:var(--gold);margin-top:16px">⚽ Posibles goleadores de hoy</div>
   <div class="section-sub">Probabilidad estimada de que cada figura marque en sus partidos de hoy.</div>
   <div class="scorers" id="scorers"></div>
+  ============================================================ -->
 
-  <div class="section-title">② Cuadro de eliminación — 16avos → Final</div>
-  <div class="section-sub">Los cupos "<b>1° Grupo K</b>", "<b>3° Grupo L</b>", etc. se completan cuando defines los grupos de arriba. Luego haz clic para avanzar.</div>
+  <div class="section-title">Cuadro de eliminación — 16avos → Final</div>
+  <div class="section-sub">16avos confirmados tras la fase de grupos. Haz clic en una selección para hacerla avanzar, o usa los botones para simular todo el cuadro.<br><span style="color:var(--accent2)">Pasa el mouse por un partido</span> para ver fecha, hora de transmisión y favorito.</div>
   <div class="scroller">
     <div class="bracket" id="bracket"><div id="lines"></div></div>
   </div>
 
-  <footer>Tablas reales tras la 2ª fecha · Fixture de eliminación según el cuadro provisional oficial.</footer>
+  <footer>16avos de final confirmados tras la fase de grupos (28-jun-2026) · Probabilidades estimadas con modelo Elo.</footer>
 
 <script>
 /* ===================== DATOS ===================== */
 const T=(n,f,c)=>({name:n,flag:f,code:c});
 const ENG_FLAG="🏴󠁧󠁢󠁥󠁮󠁧󠁿";
 
-/* Grupos que se definen HOY (puntos/DG tras la 2ª fecha) */
+/* ===== RECICLABLE · FASE DE GRUPOS (desactivada el 28-jun, ya finalizó) =====
+   Para reutilizar: descomenta este bloque y los demás marcados "RECICLABLE",
+   y vuelve a enlazar renderGroups()/renderScorers() en render()/init.
 const GROUPS={
   J:{matches:[["Argentina","Jordania"],["Argelia","Austria"]],
     teams:[
@@ -203,6 +222,7 @@ const GROUPS={
     stats:{Inglaterra:{pts:4,gd:2,gf:4},Ghana:{pts:4,gd:1,gf:1},Croacia:{pts:3,gd:-1,gf:3},"Panamá":{pts:0,gd:-2,gf:0}}},
 };
 const teamByName=n=>{for(const g in GROUPS){const t=GROUPS[g].teams.find(x=>x.name===n);if(t)return t;}return null;};
+===== FIN RECICLABLE · FASE DE GRUPOS ===== */
 
 /* Fuerza de cada selección (modelo tipo Elo, según ranking FIFA y forma reciente) */
 const RATING={
@@ -222,7 +242,7 @@ function matchProbs(a,b){                                          // grupos: co
 function sampleGroup(a,b){const p=matchProbs(a,b),r=Math.random();return r<p.a?"A":(r<p.a+p.d?"D":"B");}
 function sampleKO(a,b){return Math.random()<pWin(a.name,b.name)?0:1;}
 
-/* Posibles goleadores de hoy (grupos J, K, L) — probabilidad estimada de marcar */
+/* ===== RECICLABLE · GOLEADORES DE HOY (desactivado el 28-jun) =====
 const SCORERS=[
   {p:"Cristiano Ronaldo",t:"Portugal",f:"🇵🇹",pct:55},
   {p:"Harry Kane",t:"Inglaterra",f:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",pct:57},
@@ -256,8 +276,8 @@ function renderScorers(){
     wrap.appendChild(d);
   });
 }
+===== FIN RECICLABLE · GOLEADORES ===== */
 
-/* Resultados de hoy: "A" gana local, "D" empate, "B" gana visitante, null sin jugar */
 let OUT;
 
 /* Definición de los 16avos (en orden de cuadro). ref:[grupo,posición] = clasificado dinámico */
@@ -267,23 +287,45 @@ const R32DEF=[
   [{t:T("Francia","🇫🇷","FRA")},       {t:T("Suecia","🇸🇪","SWE")}],          // OF2
   [{t:T("Sudáfrica","🇿🇦","RSA")},     {t:T("Canadá","🇨🇦","CAN")}],          // OF3
   [{t:T("Países Bajos","🇳🇱","NED")},  {t:T("Marruecos","🇲🇦","MAR")}],       // OF4
-  [{ref:["K",2]},                      {ref:["L",2]}],                         // OF5  2°K vs 2°L
-  [{t:T("España","🇪🇸","ESP")},        {ref:["J",2]}],                         // OF6  ESP vs 2°J
+  [{t:T("Portugal","🇵🇹","POR")},     {t:T("Croacia","🇭🇷","CRO")}],         // OF5  2°K vs 2°L → Portugal vs Croacia
+  [{t:T("España","🇪🇸","ESP")},        {t:T("Austria","🇦🇹","AUT")}],         // OF6  ESP vs 2°J → España vs Austria
   [{t:T("Estados Unidos","🇺🇸","USA")},{t:T("Bosnia y H.","🇧🇦","BIH")}],     // OF7
   [{t:T("Egipto","🇪🇬","EGY")},        {t:T("Corea del Sur","🇰🇷","KOR")}],   // OF8
   /* --- Llave derecha OF9-OF16 --- */
   [{t:T("Brasil","🇧🇷","BRA")},        {t:T("Japón","🇯🇵","JPN")}],           // OF9
   [{t:T("Costa de Marfil","🇨🇮","CIV")},{t:T("Noruega","🇳🇴","NOR")}],        // OF10
   [{t:T("México","🇲🇽","MEX")},        {t:T("Ecuador","🇪🇨","ECU")}],         // OF11
-  [{ref:["L",1]},                      {t:T("Senegal","🇸🇳","SEN")}],          // OF12 1°L vs SEN
-  [{ref:["J",1]},                      {t:T("Cabo Verde","🇨🇻","CPV")}],       // OF13 1°J vs CPV
+  [{t:T("Inglaterra",ENG_FLAG,"ENG")},{t:T("RD Congo","🇨🇩","COD")}],       // OF12 1°L vs 3°K → Inglaterra vs RD Congo
+  [{t:T("Argentina","🇦🇷","ARG")},     {t:T("Cabo Verde","🇨🇻","CPV")}],      // OF13 1°J vs CPV → Argentina vs Cabo Verde
   [{t:T("Australia","🇦🇺","AUS")},     {t:T("Irán","🇮🇷","IRN")}],            // OF14
-  [{t:T("Suiza","🇨🇭","SUI")},         {ref:["J",3]}],                         // OF15 SUI vs 3°J
-  [{ref:["K",1]},                      {ref:["L",3]}],                         // OF16 1°K vs 3°L
+  [{t:T("Suiza","🇨🇭","SUI")},         {t:T("Argelia","🇩🇿","ALG")}],         // OF15 SUI vs 3°J → Suiza vs Argelia
+  [{t:T("Colombia","🇨🇴","COL")},      {t:T("Ghana","🇬🇭","GHA")}],           // OF16 1°K vs 3°L → Colombia vs Ghana
 ];
 const ROUND_NAMES=["16avos","Octavos","Cuartos","Semifinal","Final"];
 
+/* Datos de transmisión de cada partido de 16avos (orden = R32DEF / OF1..OF16).
+   Horas en hora de Colombia (UTC-5), calendario provisional; "—" = por confirmar. */
+const MATCHINFO=[
+  {d:"Lun 29 jun",h:"15:30",s:"Gillette Stadium, Boston",       tv:"Caracol/RCN · DGO"}, // OF1
+  {d:"Mar 30 jun",h:"—",    s:"MetLife Stadium, Nueva Jersey",   tv:"Caracol/RCN · DGO"}, // OF2
+  {d:"Dom 28 jun",h:"14:00",s:"SoFi Stadium, Los Ángeles",      tv:"Caracol/RCN · DGO"}, // OF3
+  {d:"Lun 29 jun",h:"20:00",s:"Estadio BBVA, Monterrey",        tv:"Caracol/RCN · DGO"}, // OF4
+  {d:"Jue 2 jul", h:"18:00",s:"BMO Field, Toronto",             tv:"Caracol/RCN · DGO"}, // OF5
+  {d:"Mar 30 jun",h:"14:00",s:"SoFi Stadium, Los Ángeles",      tv:"Caracol/RCN · DGO"}, // OF6
+  {d:"Mié 1 jul", h:"19:00",s:"Levi's Stadium, San Francisco",  tv:"Caracol/RCN · DGO"}, // OF7
+  {d:"—",         h:"—",    s:"Por confirmar",                  tv:"Caracol/RCN · DGO"}, // OF8
+  {d:"Lun 29 jun",h:"12:00",s:"NRG Stadium, Houston",           tv:"Caracol/RCN · DGO"}, // OF9
+  {d:"Mar 30 jun",h:"—",    s:"AT&T Stadium, Dallas",           tv:"Caracol/RCN · DGO"}, // OF10
+  {d:"Mié 1 jul", h:"—",    s:"Estadio Azteca, Ciudad de México",tv:"Caracol/RCN · DGO"}, // OF11
+  {d:"Mié 1 jul", h:"11:00",s:"Mercedes-Benz Stadium, Atlanta", tv:"Caracol/RCN · DGO"}, // OF12
+  {d:"Vie 3 jul", h:"17:00",s:"Hard Rock Stadium, Miami",       tv:"Caracol/RCN · DGO"}, // OF13
+  {d:"—",         h:"—",    s:"Por confirmar",                  tv:"Caracol/RCN · DGO"}, // OF14
+  {d:"Mié 1 jul", h:"22:00",s:"BC Place, Vancouver",            tv:"Caracol/RCN · DGO"}, // OF15
+  {d:"Vie 3 jul", h:"20:30",s:"Arrowhead Stadium, Kansas City", tv:"Caracol/RCN · DGO"}, // OF16
+];
+
 /* ===================== TABLAS DE GRUPO ===================== */
+/* ===== RECICLABLE · cálculo de posiciones de grupo (28-jun: inactivo) =====
 function groupDecided(g){return OUT[g].every(o=>o!==null);}
 function computeGroup(g,outs){
   outs=outs||OUT[g];
@@ -317,12 +359,13 @@ function lockedTeam(grp,pos){
   })(0);
   return locked?sample:null;
 }
+===== FIN RECICLABLE · posiciones de grupo ===== */
+// Todos los cupos de los 16avos ya son equipos fijos (los grupos terminaron).
 function resolveSlot(s){
   if(s.t)return s.t;
-  const grp=s.ref[0],pos=s.ref[1];
-  const lk=lockedTeam(grp,pos);
-  if(lk)return T(lk.name,lk.flag,lk.code);     // posición ya asegurada → equipo real
-  return {name:`${pos}° Grupo ${grp}`,flag:"⚪",code:`${pos}°${grp}`,placeholder:true};
+  // (reciclable) si en el futuro vuelves a usar cupos dinámicos {ref:[grupo,pos]},
+  // descomenta lockedTeam/computeGroup arriba y restaura la lógica de placeholder.
+  return {name:"Por definir",flag:"⚪",code:"—",placeholder:true};
 }
 
 /* ===================== ESTADO DEL CUADRO ===================== */
@@ -357,6 +400,7 @@ function pick(r,m,slot){if(!rounds[r][m].teams[slot])return;rounds[r][m].winner=
 function setOutcome(g,i,o){OUT[g][i]=(OUT[g][i]===o?null:o);syncR32();propagate();render();}
 
 /* ===================== RENDER GRUPOS ===================== */
+/* ===== RECICLABLE · UI de la fase de grupos (28-jun: inactiva) =====
 function renderGroups(){
   const wrap=document.getElementById("groups");wrap.innerHTML="";
   ["J","K","L"].forEach(g=>{
@@ -384,6 +428,7 @@ function renderGroups(){
     b.onclick=()=>{const gm=b.closest(".gmatch");setOutcome(gm.dataset.g,+gm.dataset.i,b.dataset.o);};
   });
 }
+===== FIN RECICLABLE · UI fase de grupos ===== */
 
 /* ===================== RENDER BRACKET ===================== */
 const bracketEl=document.getElementById("bracket");
@@ -406,18 +451,55 @@ function teamRow(r,m,slot){
 function matchEl(r,i,withNum){
   const md=document.createElement("div");md.className="match";md.dataset.r=r;md.dataset.i=i;
   if(withNum){const s=document.createElement("span");s.className="num";s.textContent=i+1;md.appendChild(s);}
-  md.appendChild(teamRow(r,i,0));md.appendChild(teamRow(r,i,1));return md;
+  md.appendChild(teamRow(r,i,0));md.appendChild(teamRow(r,i,1));
+  md.addEventListener("mouseenter",e=>showTip(r,i,e));
+  md.addEventListener("mousemove",moveTip);
+  md.addEventListener("mouseleave",hideTip);
+  return md;
 }
+/* ---- tooltip de partido (fecha-hora de transmisión + favorito) ---- */
+const mtip=document.createElement("div");mtip.id="mtip";document.body.appendChild(mtip);
+function tipHTML(r,i){
+  const M=rounds[r][i];if(!M)return"";
+  const a=M.teams[0],b=M.teams[1];if(!a||!b)return"";
+  const nm=t=>t.placeholder?t.name:`${t.flag} ${t.name}`;
+  let h=`<b>${nm(a)}  vs  ${nm(b)}</b>`;
+  if(r===0){
+    const inf=MATCHINFO[i]||{};
+    const fecha=inf.d&&inf.d!=="—"?inf.d:"Fecha por confirmar";
+    const hora=inf.h&&inf.h!=="—"?` · ${inf.h} (hora Col.)`:" · hora por confirmar";
+    h+=`<div>🗓 ${fecha}${hora}</div><div>📍 ${inf.s||"Por confirmar"}</div><div>📺 ${inf.tv||"DGO"}</div>`;
+  }else{
+    h+=`<div>🗓 Se define al avanzar el cuadro</div>`;
+  }
+  if(!a.placeholder&&!b.placeholder){
+    const f=rating(a.name)>=rating(b.name)?a:b,o=f===a?b:a;
+    h+=`<div class="fav">⭐ Favorito: ${f.flag} ${f.name} (${Math.round(pWin(f.name,o.name)*100)}%)</div>`;
+  }
+  return h;
+}
+function moveTip(e){
+  const pad=14,w=mtip.offsetWidth,h=mtip.offsetHeight;
+  let x=e.clientX+pad,y=e.clientY+pad;
+  if(x+w>window.innerWidth)x=e.clientX-w-pad;
+  if(y+h>window.innerHeight)y=e.clientY-h-pad;
+  mtip.style.left=Math.max(4,x)+"px";mtip.style.top=Math.max(4,y)+"px";
+}
+function showTip(r,i,e){const html=tipHTML(r,i);if(!html){hideTip();return;}mtip.innerHTML=html;mtip.style.display="block";moveTip(e);}
+function hideTip(){mtip.style.display="none";}
 function column(round,start,count,side){
   const col=document.createElement("div");col.className="round"+(side==="R"?" side-r":"");
   const t=document.createElement("div");t.className="round-title";t.textContent=ROUND_NAMES[round];col.appendChild(t);
-  for(let i=start;i<start+count;i++)col.appendChild(matchEl(round,i,round===0));
+  const body=document.createElement("div");body.className="round-body";
+  for(let i=start;i<start+count;i++)body.appendChild(matchEl(round,i,round===0));
+  col.appendChild(body);
   return col;
 }
 function finalColumn(){
   const col=document.createElement("div");col.className="round final-col";
   const t=document.createElement("div");t.className="round-title";t.textContent="Final";col.appendChild(t);
-  col.appendChild(matchEl(4,0,false));
+  const body=document.createElement("div");body.className="round-body";
+  body.appendChild(matchEl(4,0,false));col.appendChild(body);
   const champ=winnerTeam(4,0),wrap=document.createElement("div");wrap.className="champion-wrap";
   const tro=document.createElement("div");tro.className="trophy";tro.textContent="🏆";
   const c=document.createElement("div");
@@ -433,7 +515,7 @@ function renderBracket(){
    .forEach(c=>bracketEl.appendChild(c));
   requestAnimationFrame(drawConnectors);
 }
-function render(){renderGroups();renderBracket();}
+function render(){renderBracket();}
 
 /* ---- conectores ---- */
 function line(p,x1,y1,x2,y2){
@@ -463,6 +545,7 @@ function drawConnectors(){
 }
 
 /* ===================== CONTADOR DE SIMULACIONES (fase de grupos) ===================== */
+/* ===== RECICLABLE · contador de simulaciones de grupos (28-jun: inactivo) =====
 let SIM={count:0,m:{}};                           // se reinicia al recargar la página
 function recordSim(){
   SIM.count++;
@@ -495,13 +578,12 @@ function renderSimStats(){
   el.className="simstats show";el.innerHTML=h;
   document.getElementById("ssClear").onclick=()=>{SIM={count:0,m:{}};renderSimStats();};
 }
+===== FIN RECICLABLE · contador de simulaciones ===== */
 
 /* ===================== BOTONES ===================== */
 document.getElementById("resetBtn").onclick=()=>{initState();render();};
 document.getElementById("probBtn").onclick=()=>{
   initState();
-  ["J","K","L"].forEach(g=>OUT[g]=GROUPS[g].matches.map(m=>sampleGroup(m[0],m[1])));
-  syncR32();
   for(let r=0;r<5;r++){
     for(let m=0;m<rounds[r].length;m++){
       const a=rounds[r][m].teams[0],b=rounds[r][m].teams[1];
@@ -510,13 +592,10 @@ document.getElementById("probBtn").onclick=()=>{
     }
     propagate();
   }
-  render();recordSim();
+  render();
 };
 document.getElementById("randomBtn").onclick=()=>{
   initState();
-  const r3=()=>["A","D","B"][Math.floor(Math.random()*3)];
-  ["J","K","L"].forEach(g=>OUT[g]=[r3(),r3()]);
-  syncR32();
   for(let r=0;r<5;r++){
     for(let m=0;m<rounds[r].length;m++){
       const a=rounds[r][m].teams[0],b=rounds[r][m].teams[1];
@@ -524,12 +603,12 @@ document.getElementById("randomBtn").onclick=()=>{
     }
     propagate();
   }
-  render();recordSim();
+  render();
 };
 window.addEventListener("resize",()=>requestAnimationFrame(drawConnectors));
 
 /* ===================== INIT ===================== */
-initState();render();renderScorers();
+initState();render();
 </script>
 </body>
 </html>
