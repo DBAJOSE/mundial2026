@@ -154,6 +154,20 @@
   #mtip .hint{color:var(--muted);font-style:italic}
   .match{cursor:default}
 
+  .ticker{position:fixed;left:8px;bottom:10px;z-index:40;max-width:215px;
+          font-size:10px;line-height:1.45;color:var(--muted);
+          background:rgba(6,12,28,.85);border:1px solid var(--line);border-radius:9px;
+          padding:7px 9px;backdrop-filter:blur(3px)}
+  .ticker .tk-h{font-size:9px;letter-spacing:1px;text-transform:uppercase;
+                color:var(--accent2);font-weight:700;margin-bottom:4px}
+  .ticker .live{color:#ffd0d0;margin-bottom:5px}
+  .ticker .live b{color:#ff6b6b}
+  .ticker .up{margin-bottom:3px}
+  .ticker .up b{color:var(--accent)}
+  .ticker .ch{color:var(--gold)}
+  .ticker b{font-weight:700}
+  @media (max-width:640px){.ticker{font-size:9px;max-width:165px;left:5px;bottom:6px;padding:6px 8px}}
+
   footer{text-align:center;color:var(--muted);font-size:12px;padding:6px 16px 30px}
   footer .sign{display:inline-flex;align-items:center;gap:5px;margin-top:5px;
                font-size:10.5px;letter-spacing:.4px;color:var(--line);opacity:.85}
@@ -196,6 +210,8 @@
   <div class="scroller">
     <div class="bracket" id="bracket"><div id="lines"></div></div>
   </div>
+
+  <div class="ticker" id="nextmatch" style="display:none"></div>
 
   <footer>16avos de final confirmados tras la fase de grupos (28-jun-2026) · Probabilidades estimadas con modelo Elo.<br>
     <span class="sign">
@@ -321,22 +337,22 @@ const ROUND_NAMES=["16avos","Octavos","Cuartos","Semifinal","Final"];
 /* Datos de transmisión de cada partido de 16avos (orden = R32DEF / OF1..OF16).
    Horas en hora de Colombia (UTC-5), calendario provisional; "—" = por confirmar. */
 const MATCHINFO=[
-  {d:"Lun 29 jun",h:"15:30",s:"Gillette Stadium, Boston",       tv:"Caracol/RCN · DGO"}, // OF1
-  {d:"Mar 30 jun",h:"—",    s:"MetLife Stadium, Nueva Jersey",   tv:"Caracol/RCN · DGO"}, // OF2
-  {d:"Dom 28 jun",h:"14:00",s:"SoFi Stadium, Los Ángeles",      tv:"Caracol/RCN · DGO"}, // OF3
-  {d:"Lun 29 jun",h:"20:00",s:"Estadio BBVA, Monterrey",        tv:"Caracol/RCN · DGO"}, // OF4
-  {d:"Jue 2 jul", h:"18:00",s:"BMO Field, Toronto",             tv:"Caracol/RCN · DGO"}, // OF5
-  {d:"Mar 30 jun",h:"14:00",s:"SoFi Stadium, Los Ángeles",      tv:"Caracol/RCN · DGO"}, // OF6
-  {d:"Mié 1 jul", h:"19:00",s:"Levi's Stadium, San Francisco",  tv:"Caracol/RCN · DGO"}, // OF7
-  {d:"—",         h:"—",    s:"Por confirmar",                  tv:"Caracol/RCN · DGO"}, // OF8
-  {d:"Lun 29 jun",h:"12:00",s:"NRG Stadium, Houston",           tv:"Caracol/RCN · DGO"}, // OF9
-  {d:"Mar 30 jun",h:"—",    s:"AT&T Stadium, Dallas",           tv:"Caracol/RCN · DGO"}, // OF10
-  {d:"Mié 1 jul", h:"—",    s:"Estadio Azteca, Ciudad de México",tv:"Caracol/RCN · DGO"}, // OF11
-  {d:"Mié 1 jul", h:"11:00",s:"Mercedes-Benz Stadium, Atlanta", tv:"Caracol/RCN · DGO"}, // OF12
-  {d:"Vie 3 jul", h:"17:00",s:"Hard Rock Stadium, Miami",       tv:"Caracol/RCN · DGO"}, // OF13
-  {d:"—",         h:"—",    s:"Por confirmar",                  tv:"Caracol/RCN · DGO"}, // OF14
-  {d:"Mié 1 jul", h:"22:00",s:"BC Place, Vancouver",            tv:"Caracol/RCN · DGO"}, // OF15
-  {d:"Vie 3 jul", h:"20:30",s:"Arrowhead Stadium, Kansas City", tv:"Caracol/RCN · DGO"}, // OF16
+  {d:"Lun 29 jun",h:"15:30",iso:"2026-06-29T15:30:00",s:"Gillette Stadium, Boston",       tv:"Caracol/RCN · DGO"}, // OF1
+  {d:"Mar 30 jun",h:"—",    iso:null,                  s:"MetLife Stadium, Nueva Jersey",   tv:"Caracol/RCN · DGO"}, // OF2
+  {d:"Dom 28 jun",h:"14:00",iso:"2026-06-28T14:00:00",s:"SoFi Stadium, Los Ángeles",      tv:"Caracol/RCN · DGO"}, // OF3
+  {d:"Lun 29 jun",h:"20:00",iso:"2026-06-29T20:00:00",s:"Estadio BBVA, Monterrey",        tv:"Caracol/RCN · DGO"}, // OF4
+  {d:"Jue 2 jul", h:"18:00",iso:"2026-07-02T18:00:00",s:"BMO Field, Toronto",             tv:"Caracol/RCN · DGO"}, // OF5
+  {d:"Mar 30 jun",h:"14:00",iso:"2026-06-30T14:00:00",s:"SoFi Stadium, Los Ángeles",      tv:"Caracol/RCN · DGO"}, // OF6
+  {d:"Mié 1 jul", h:"19:00",iso:"2026-07-01T19:00:00",s:"Levi's Stadium, San Francisco",  tv:"Caracol/RCN · DGO"}, // OF7
+  {d:"—",         h:"—",    iso:null,                  s:"Por confirmar",                  tv:"Caracol/RCN · DGO"}, // OF8
+  {d:"Lun 29 jun",h:"12:00",iso:"2026-06-29T12:00:00",s:"NRG Stadium, Houston",           tv:"Caracol/RCN · DGO"}, // OF9
+  {d:"Mar 30 jun",h:"—",    iso:null,                  s:"AT&T Stadium, Dallas",           tv:"Caracol/RCN · DGO"}, // OF10
+  {d:"Mié 1 jul", h:"—",    iso:null,                  s:"Estadio Azteca, Ciudad de México",tv:"Caracol/RCN · DGO"}, // OF11
+  {d:"Mié 1 jul", h:"11:00",iso:"2026-07-01T11:00:00",s:"Mercedes-Benz Stadium, Atlanta", tv:"Caracol/RCN · DGO"}, // OF12
+  {d:"Vie 3 jul", h:"17:00",iso:"2026-07-03T17:00:00",s:"Hard Rock Stadium, Miami",       tv:"Caracol/RCN · DGO"}, // OF13
+  {d:"—",         h:"—",    iso:null,                  s:"Por confirmar",                  tv:"Caracol/RCN · DGO"}, // OF14
+  {d:"Mié 1 jul", h:"22:00",iso:"2026-07-01T22:00:00",s:"BC Place, Vancouver",            tv:"Caracol/RCN · DGO"}, // OF15
+  {d:"Vie 3 jul", h:"20:30",iso:"2026-07-03T20:30:00",s:"Arrowhead Stadium, Kansas City", tv:"Caracol/RCN · DGO"}, // OF16
 ];
 
 /* ===================== TABLAS DE GRUPO ===================== */
@@ -614,8 +630,37 @@ document.getElementById("randomBtn").onclick=()=>{
 };
 window.addEventListener("resize",()=>requestAnimationFrame(drawConnectors));
 
+/* ===================== AGENDA: PRÓXIMO PARTIDO / EN VIVO (según fecha-hora actual) ===================== */
+const KO_DUR=120*60*1000;            // duración aprox. de un partido, para marcar "Transmitiendo"
+const tkTeam=t=>`${t.flag} ${t.code}`;
+function renderTicker(){
+  const el=document.getElementById("nextmatch");if(!el)return;
+  const now=Date.now(),sched=[];
+  for(let i=0;i<R32DEF.length;i++){
+    const inf=MATCHINFO[i];if(!inf||!inf.iso)continue;          // sólo partidos con fecha-hora confirmada
+    sched.push({start:new Date(inf.iso+"-05:00").getTime(),a:R32DEF[i][0].t,b:R32DEF[i][1].t,inf});
+  }
+  sched.sort((x,y)=>x.start-y.start);
+  const live=sched.filter(m=>now>=m.start&&now<m.start+KO_DUR);
+  const fut=sched.filter(m=>m.start>now);
+  let html="";
+  live.forEach(m=>{
+    html+=`<div class="live">🔴 <b>Transmitiendo</b> · ${tkTeam(m.a)} vs ${tkTeam(m.b)}<br><span class="ch">📺 ${m.inf.tv}</span></div>`;
+  });
+  if(fut.length){
+    const t0=fut[0].start;
+    fut.filter(m=>m.start===t0).forEach(m=>{                    // si se cruzan dos a la misma hora, muestra ambos
+      html+=`<div class="up">⏭ <b>Próximo</b> · ${tkTeam(m.a)} vs ${tkTeam(m.b)}<br>🗓 ${m.inf.d} · ⏰ ${m.inf.h} (hora Col.)<br><span class="ch">📺 ${m.inf.tv}</span></div>`;
+    });
+  }
+  if(!html)html=`<div class="up">🏁 16avos finalizados</div>`;
+  el.innerHTML=`<div class="tk-h">Agenda · 16avos</div>${html}`;
+  el.style.display="block";
+}
+
 /* ===================== INIT ===================== */
-initState();render();
+initState();render();renderTicker();
+setInterval(renderTicker,30000);     // se actualiza solo cada 30 s
 </script>
 </body>
 </html>
