@@ -123,7 +123,11 @@
   .side-r .team .prov{right:auto;left:4px}
   .team.empty{color:var(--muted);cursor:default;font-style:italic}
   .team.empty .flag{opacity:.3}
-  .team:not(.empty):hover{background:var(--card-hi);border-color:var(--accent2)}
+  .team:not(.empty):not(.locked):hover{background:var(--card-hi);border-color:var(--accent2)}
+  .team.locked{cursor:default}
+  .ftbadge{position:absolute;top:-7px;right:4px;font-size:9px;background:var(--accent);color:#04121a;
+           border-radius:5px;padding:0 5px;font-weight:800;letter-spacing:.5px;z-index:3}
+  .side-r .ftbadge{right:auto;left:4px}
   .team.win{background:linear-gradient(90deg,rgba(34,211,166,.25),rgba(55,194,255,.10));border-color:var(--accent)}
   .team.win .code,.team.win .name{color:#fff}
   .team.win .flag{filter:drop-shadow(0 0 4px var(--accent))}
@@ -178,7 +182,7 @@
   <header>
     <div class="kicker">Copa del Mundo · USA · México · Canadá</div>
     <h1>Simulador Mundial 2026</h1>
-    <p>Domingo 28 de junio · 16avos de final ya definidos · arma tu cuadro hasta la Final</p>
+    <p>Lunes 29 de junio · 16avos de final ya definidos · arma tu cuadro hasta la Final</p>
     <div class="toolbar">
       <button class="btn primary" id="probBtn">⚡ Simular por probabilidad</button>
       <button class="btn" id="randomBtn">🎲 Azar</button>
@@ -258,7 +262,7 @@ const teamByName=n=>{for(const g in GROUPS){const t=GROUPS[g].teams.find(x=>x.na
 /* Fuerza de cada selección (modelo tipo Elo, según ranking FIFA y forma reciente) */
 const RATING={
   "Argentina":2095,"Francia":2080,"España":2070,"Brasil":2040,"Portugal":2015,"Inglaterra":2010,
-  "Países Bajos":1985,"Alemania":1955,"Croacia":1895,"Marruecos":1900,"Colombia":1875,"Suiza":1855,
+  "Países Bajos":1985,"Bélgica":1970,"Alemania":1955,"Croacia":1895,"Marruecos":1900,"Colombia":1875,"Suiza":1855,
   "Senegal":1845,"Japón":1835,"Noruega":1825,"Austria":1815,"Estados Unidos":1810,"México":1800,
   "Ecuador":1800,"Corea del Sur":1785,"Irán":1775,"Argelia":1770,"Suecia":1770,"Canadá":1760,
   "Costa de Marfil":1755,"Egipto":1750,"Australia":1740,"Ghana":1735,"Bosnia y H.":1720,"RD Congo":1710,
@@ -321,17 +325,23 @@ const R32DEF=[
   [{t:T("Portugal","🇵🇹","POR")},     {t:T("Croacia","🇭🇷","CRO")}],         // OF5  2°K vs 2°L → Portugal vs Croacia
   [{t:T("España","🇪🇸","ESP")},        {t:T("Austria","🇦🇹","AUT")}],         // OF6  ESP vs 2°J → España vs Austria
   [{t:T("Estados Unidos","🇺🇸","USA")},{t:T("Bosnia y H.","🇧🇦","BIH")}],     // OF7
-  [{t:T("Egipto","🇪🇬","EGY")},        {t:T("Corea del Sur","🇰🇷","KOR")}],   // OF8
+  [{t:T("Bélgica","🇧🇪","BEL")},       {t:T("Senegal","🇸🇳","SEN")}],         // OF8  Bélgica vs Senegal
   /* --- Llave derecha OF9-OF16 --- */
   [{t:T("Brasil","🇧🇷","BRA")},        {t:T("Japón","🇯🇵","JPN")}],           // OF9
   [{t:T("Costa de Marfil","🇨🇮","CIV")},{t:T("Noruega","🇳🇴","NOR")}],        // OF10
   [{t:T("México","🇲🇽","MEX")},        {t:T("Ecuador","🇪🇨","ECU")}],         // OF11
   [{t:T("Inglaterra",ENG_FLAG,"ENG")},{t:T("RD Congo","🇨🇩","COD")}],       // OF12 1°L vs 3°K → Inglaterra vs RD Congo
   [{t:T("Argentina","🇦🇷","ARG")},     {t:T("Cabo Verde","🇨🇻","CPV")}],      // OF13 1°J vs CPV → Argentina vs Cabo Verde
-  [{t:T("Australia","🇦🇺","AUS")},     {t:T("Irán","🇮🇷","IRN")}],            // OF14
+  [{t:T("Australia","🇦🇺","AUS")},     {t:T("Egipto","🇪🇬","EGY")}],          // OF14  Australia vs Egipto
   [{t:T("Suiza","🇨🇭","SUI")},         {t:T("Argelia","🇩🇿","ALG")}],         // OF15 SUI vs 3°J → Suiza vs Argelia
   [{t:T("Colombia","🇨🇴","COL")},      {t:T("Ghana","🇬🇭","GHA")}],           // OF16 1°K vs 3°L → Colombia vs Ghana
 ];
+/* Resultados de 16avos YA jugados (clave = índice en R32DEF / OFx-1, valor = 0|1 ganador).
+   Se fijan al iniciar, quedan bloqueados y no los cambian Simular/Azar/Reiniciar. */
+const R32PLAYED={
+  2:1,   // OF3 · Sudáfrica 🇿🇦 0–1 Canadá 🇨🇦 (Dom 28 jun) → avanza Canadá
+  8:0,   // OF9 · Brasil 🇧🇷 venció a Japón 🇯🇵 (Lun 29 jun) → avanza Brasil
+};
 const ROUND_NAMES=["16avos","Octavos","Cuartos","Semifinal","Final"];
 
 /* Datos de transmisión de cada partido de 16avos (orden = R32DEF / OF1..OF16).
@@ -344,13 +354,13 @@ const MATCHINFO=[
   {d:"Jue 2 jul", h:"18:00",iso:"2026-07-02T18:00:00",s:"BMO Field, Toronto",             tv:"Caracol/RCN · DGO"}, // OF5
   {d:"Mar 30 jun",h:"14:00",iso:"2026-06-30T14:00:00",s:"SoFi Stadium, Los Ángeles",      tv:"Caracol/RCN · DGO"}, // OF6
   {d:"Mié 1 jul", h:"19:00",iso:"2026-07-01T19:00:00",s:"Levi's Stadium, San Francisco",  tv:"Caracol/RCN · DGO"}, // OF7
-  {d:"—",         h:"—",    iso:null,                  s:"Por confirmar",                  tv:"Caracol/RCN · DGO"}, // OF8
+  {d:"Mié 1 jul", h:"15:00",iso:"2026-07-01T15:00:00",s:"Lumen Field, Seattle",           tv:"Caracol/RCN · DGO"}, // OF8
   {d:"Lun 29 jun",h:"12:00",iso:"2026-06-29T12:00:00",s:"NRG Stadium, Houston",           tv:"Caracol/RCN · DGO"}, // OF9
   {d:"Mar 30 jun",h:"—",    iso:null,                  s:"AT&T Stadium, Dallas",           tv:"Caracol/RCN · DGO"}, // OF10
   {d:"Mié 1 jul", h:"—",    iso:null,                  s:"Estadio Azteca, Ciudad de México",tv:"Caracol/RCN · DGO"}, // OF11
   {d:"Mié 1 jul", h:"11:00",iso:"2026-07-01T11:00:00",s:"Mercedes-Benz Stadium, Atlanta", tv:"Caracol/RCN · DGO"}, // OF12
   {d:"Vie 3 jul", h:"17:00",iso:"2026-07-03T17:00:00",s:"Hard Rock Stadium, Miami",       tv:"Caracol/RCN · DGO"}, // OF13
-  {d:"—",         h:"—",    iso:null,                  s:"Por confirmar",                  tv:"Caracol/RCN · DGO"}, // OF14
+  {d:"Vie 3 jul", h:"13:00",iso:"2026-07-03T13:00:00",s:"AT&T Stadium, Dallas",            tv:"Caracol/RCN · DGO"}, // OF14
   {d:"Mié 1 jul", h:"22:00",iso:"2026-07-01T22:00:00",s:"BC Place, Vancouver",            tv:"Caracol/RCN · DGO"}, // OF15
   {d:"Vie 3 jul", h:"20:30",iso:"2026-07-03T20:30:00",s:"Arrowhead Stadium, Kansas City", tv:"Caracol/RCN · DGO"}, // OF16
 ];
@@ -405,6 +415,11 @@ function initState(){
   OUT={J:[null,null],K:[null,null],L:[null,null]};
   rounds=[R32DEF.map(m=>({teams:[resolveSlot(m[0]),resolveSlot(m[1])],winner:null}))];
   let n=8;for(let r=1;r<5;r++){const a=[];for(let i=0;i<n;i++)a.push({teams:[null,null],winner:null});rounds.push(a);n/=2;}
+  applyPlayed();
+}
+function applyPlayed(){                       // fija los 16avos ya jugados y los propaga al cuadro
+  for(const k in R32PLAYED)rounds[0][+k].winner=R32PLAYED[k];
+  propagate();
 }
 function winnerTeam(r,m){const x=rounds[r][m];return x.winner===null?null:x.teams[x.winner];}
 function syncR32(){
@@ -471,12 +486,15 @@ function teamRow(r,m,slot){
     return div;
   }
   const w=rounds[r][m].winner;
-  div.className="team"+(w===slot?" win":(w!==null?" lose":""));
+  const played=(r===0&&Object.prototype.hasOwnProperty.call(R32PLAYED,m));   // 16avo ya jugado
+  div.className="team"+(w===slot?" win":(w!==null?" lose":""))+(played?" locked":"");
   const other=rounds[r][m].teams[1-slot];
   let pct="";
   if(other&&!other.placeholder){pct=`<span class="pct">${Math.round(pWin(t.name,other.name)*100)}%</span>`;}
   div.innerHTML=`<span class="flag">${t.flag}</span><span class="code">${t.code}</span><span class="name">${t.name}</span>${pct}`;
-  div.addEventListener("click",()=>pick(r,m,slot));
+  if(played){
+    if(w===slot){const ft=document.createElement("span");ft.className="ftbadge";ft.textContent="FINAL";div.appendChild(ft);}
+  }else div.addEventListener("click",()=>pick(r,m,slot));
   return div;
 }
 function matchEl(r,i,withNum){
@@ -609,6 +627,7 @@ document.getElementById("probBtn").onclick=()=>{
   initState();
   for(let r=0;r<5;r++){
     for(let m=0;m<rounds[r].length;m++){
+      if(r===0&&Object.prototype.hasOwnProperty.call(R32PLAYED,m))continue;   // no toca 16avos ya jugados
       const a=rounds[r][m].teams[0],b=rounds[r][m].teams[1];
       if(a&&b&&!a.placeholder&&!b.placeholder)rounds[r][m].winner=sampleKO(a,b);
       else if(a&&!a.placeholder)rounds[r][m].winner=0;else if(b&&!b.placeholder)rounds[r][m].winner=1;
@@ -621,6 +640,7 @@ document.getElementById("randomBtn").onclick=()=>{
   initState();
   for(let r=0;r<5;r++){
     for(let m=0;m<rounds[r].length;m++){
+      if(r===0&&Object.prototype.hasOwnProperty.call(R32PLAYED,m))continue;   // no toca 16avos ya jugados
       const a=rounds[r][m].teams[0],b=rounds[r][m].teams[1];
       if(a&&b)rounds[r][m].winner=Math.random()<.5?0:1;else if(a)rounds[r][m].winner=0;else if(b)rounds[r][m].winner=1;
     }
@@ -632,7 +652,7 @@ window.addEventListener("resize",()=>requestAnimationFrame(drawConnectors));
 
 /* ===================== AGENDA: PRÓXIMO PARTIDO / EN VIVO (según fecha-hora actual) ===================== */
 const KO_DUR=120*60*1000;            // duración aprox. de un partido, para marcar "Transmitiendo"
-const tkTeam=t=>`${t.flag} ${t.code}`;
+const tkTeam=t=>`${t.flag} ${t.name}`;
 function renderTicker(){
   const el=document.getElementById("nextmatch");if(!el)return;
   const now=Date.now(),sched=[];
@@ -648,9 +668,12 @@ function renderTicker(){
     html+=`<div class="live">🔴 <b>Transmitiendo</b> · ${tkTeam(m.a)} vs ${tkTeam(m.b)}<br><span class="ch">📺 ${m.inf.tv}</span></div>`;
   });
   if(fut.length){
-    const t0=fut[0].start;
-    fut.filter(m=>m.start===t0).forEach(m=>{                    // si se cruzan dos a la misma hora, muestra ambos
-      html+=`<div class="up">⏭ <b>Próximo</b> · ${tkTeam(m.a)} vs ${tkTeam(m.b)}<br>🗓 ${m.inf.d} · ⏰ ${m.inf.h} (hora Col.)<br><span class="ch">📺 ${m.inf.tv}</span></div>`;
+    const todayStr=new Date(now-5*3600000).toISOString().slice(0,10);   // fecha de hoy en hora Col. (UTC-5)
+    const today=fut.filter(m=>m.inf.iso.slice(0,10)===todayStr);         // partidos que faltan HOY
+    const list=today.length?today:fut.filter(m=>m.start===fut[0].start); // si no queda nada hoy, muestra el próximo
+    list.forEach((m,idx)=>{                                              // primero "Próximo", el resto del día debajo
+      const lbl=idx===0?"⏭ <b>Próximo</b>":"🕒 <b>Hoy</b>";
+      html+=`<div class="up">${lbl} · ${tkTeam(m.a)} vs ${tkTeam(m.b)}<br>🗓 ${m.inf.d} · ⏰ ${m.inf.h} (hora Col.)<br><span class="ch">📺 ${m.inf.tv}</span></div>`;
     });
   }
   if(!html)html=`<div class="up">🏁 16avos finalizados</div>`;
