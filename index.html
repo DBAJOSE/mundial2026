@@ -185,7 +185,7 @@
   <header>
     <div class="kicker">Copa del Mundo · USA · México · Canadá</div>
     <h1>Simulador Mundial 2026</h1>
-    <p>Lunes 29 de junio · 16avos de final ya definidos · arma tu cuadro hasta la Final</p>
+    <p>Martes 30 de junio · 16avos de final ya definidos · arma tu cuadro hasta la Final</p>
     <div class="toolbar">
       <button class="btn primary" id="probBtn">⚡ Simular por probabilidad</button>
       <button class="btn" id="randomBtn">🎲 Azar</button>
@@ -342,7 +342,9 @@ const R32DEF=[
 /* Resultados de 16avos YA jugados (clave = índice en R32DEF / OFx-1, valor = 0|1 ganador).
    Se fijan al iniciar, quedan bloqueados y no los cambian Simular/Azar/Reiniciar. */
 const R32PLAYED={
+  0:1,   // OF1 · Alemania 🇩🇪 (pen) Paraguay 🇵🇾 (Dom 28 jun) → avanza Paraguay
   2:1,   // OF3 · Sudáfrica 🇿🇦 0–1 Canadá 🇨🇦 (Dom 28 jun) → avanza Canadá
+  3:1,   // OF4 · Países Bajos 🇳🇱 1–1 (pen) Marruecos 🇲🇦 (Lun 29 jun) → avanza Marruecos
   8:0,   // OF9 · Brasil 🇧🇷 venció a Japón 🇯🇵 (Lun 29 jun) → avanza Brasil
 };
 const ROUND_NAMES=["16avos","Octavos","Cuartos","Semifinal","Final"];
